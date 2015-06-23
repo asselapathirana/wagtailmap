@@ -1,0 +1,91 @@
+{% load staticfiles %}
+{% block extra_js %}
+      <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_KEY }}"> </script>
+      <script type="text/javascript">
+          var pages = [];
+          {% for page in pages %}
+            pages.push([
+                {{ page.location.latitude }},
+                {{ page.location.longitude }},
+                "<a href='{{page.url}}'> {{page.title }}</a>",
+                "{{ page.text }}"
+            ]);
+          {% endfor %}
+          {%if query.latitude %}
+	    query=[
+		{{query.latitude}},
+		{{query.longitude}},
+		"{{query.name}}",
+                "{{query.name}}",
+		"{% static 'wagtail_map/cityicon.png' %}"] 
+          {%else%}
+            query=[null,null]
+          {%endif %}
+           
+          var map = undefined;
+          var markers = [];
+
+
+          function ZoomCenter(){
+		//  Make an array of the LatLng's of the markers you want to show
+                var bounds = new google.maps.LatLngBounds ();
+                //  Go through each...
+                for (var i = 0, LtLgLen = pages.length; i < LtLgLen; i++) {
+                  //  And increase the bounds to take this point
+                  loc=new google.maps.LatLng(pages[i][0],pages[i][1])
+                  bounds.extend (loc);
+                }
+                //  Fit these bounds to the map
+	      if(query[0]){
+                 loc=new google.maps.LatLng(query[0],query[1]) 
+                 bounds.extend(loc)	
+		}
+               return bounds;	
+
+	  }
+
+          function addMarker(lat, long, title, text,icon) {
+              var latLng = new google.maps.LatLng(lat, long);
+              var marker = new google.maps.Marker({
+                  position: latLng,
+                  map: map,
+                  title: title,
+                  desc: "<h3>" + title + "</h3>" + text,
+		  icon: icon
+              });
+              var infowindow = new google.maps.InfoWindow();
+              google.maps.event.addListener(marker, 'click', function() {
+                  infowindow.setContent(marker.desc);
+                  infowindow.open(map,marker);
+              });
+              markers.push(marker)
+          }
+
+          function initialize() {
+	      var bounds=ZoomCenter();
+              var mapOptions = {
+                  zoom: 8,
+                  scrollwheel: false,
+                  center: {lat: -34.397, lng: 150.644}
+
+              };
+              map = new google.maps.Map(document.getElementById('map-canvas'),
+                                        mapOptions);
+              map.fitBounds (bounds);
+
+
+	
+              pages.forEach(function(page) {
+                  addMarker.apply(undefined, page);
+              });
+              
+	      if(query[0]){
+		  addMarker.apply(undefined, query);
+		}              
+          }
+
+          google.maps.event.addDomListener(window, 'load', initialize);
+      </script>
+{% endblock %}
+
+<div id="map-canvas" style="width: 100%; height: 600px"></div>
