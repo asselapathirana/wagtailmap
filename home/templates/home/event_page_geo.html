@@ -1,3 +1,5 @@
+{% extends "demo/event_page.html" %}
+{% block extra_content %}
 <h1>{{ self.title }}</h1>
 <p>{{ self.text }}</p>
  <form>
@@ -6,3 +8,4 @@
 </form>
  
 {% include "home/includes/map.html" with GOOGLE_MAPS_KEY=GOOGLE_MAPS_KEY pages=pages %}
+{% endblock %}

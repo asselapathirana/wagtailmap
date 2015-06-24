@@ -1,5 +1,8 @@
+{% extends "demo/event_index_page.html" %}
+{% block extra_content %}
 <form>
     <input type="text" name="q">
     <input type="submit">
 </form>
 {% include "home/includes/map.html" with GOOGLE_MAPS_KEY=GOOGLE_MAPS_KEY pages=pages %}
+{% endblock %}
