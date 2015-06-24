@@ -146,11 +146,15 @@ class Locatable(models.Model):
         abstract = True
 
 
-class HomePage(Page):
+#class HomePage(Page):
+#    pass
+
+class DummyHomePage(Page):
     pass
 
 
-class EventIndexPage(Page, Locatable):
+
+class EventIndexPageGeo(Page, Locatable):
     
 
 
@@ -162,12 +166,12 @@ class EventIndexPage(Page, Locatable):
             try:
                location.geocode()
             except (GeocoderUnavailable, location.CouldNotGeocode) as e:
-              pages = EventPage.objects.child_of(self).live()
+              pages = EventPageGeo.objects.child_of(self).live()
             
-            pages = self.search_children_locations(q, EventPage)
+            pages = self.search_children_locations(q, EventPageGeo)
 	    
         else:
-            pages = EventPage.objects.child_of(self).live()
+            pages = EventPageGeo.objects.child_of(self).live()
         return {
             'self': self,
             'request': request,
@@ -178,13 +182,13 @@ class EventIndexPage(Page, Locatable):
 
     def save(self, *args, **kwargs):
         self.save_location()
-        super(EventIndexPage, self).save(*args, **kwargs)
+        super(EventIndexPageGeo, self).save(*args, **kwargs)
 
 
-EventIndexPage.content_panels = Page.content_panels + Locatable.panels
+EventIndexPageGeo.content_panels = Page.content_panels + Locatable.panels
 
 
-class EventPage(Page, Locatable):
+class EventPageGeo(Page, Locatable):
     text = models.CharField(max_length=255)
 
     def get_context(self, request, *args, **kwargs):
@@ -199,9 +203,9 @@ class EventPage(Page, Locatable):
 
     def save(self, *args, **kwargs):
         self.save_location()
-        super(EventPage, self).save(*args, **kwargs)
+        super(EventPageGeo, self).save(*args, **kwargs)
 
 
-EventPage.content_panels = Page.content_panels + [
+EventPageGeo.content_panels = Page.content_panels + [
     FieldPanel('text')
 ] + Locatable.panels
