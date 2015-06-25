@@ -1,4 +1,5 @@
 {% load staticfiles %}
+{% load wagtailcore_tags %}
 {% block extra_js %}
       <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_KEY }}"> </script>
       <script type="text/javascript">
@@ -8,7 +9,7 @@
                 {{ page.location.latitude }},
                 {{ page.location.longitude }},
                 "<a href='{{page.url}}'> {{page.title }}</a>",
-                "{{ page.text }}"
+                ""
             ]);
           {% endfor %}
           {%if query.latitude %}
@@ -88,4 +89,4 @@
       </script>
 {% endblock %}
 
-<div id="map-canvas" style="width: 100%; height: 600px"></div>
+<div id="map-canvas" style="width: 90%; height: 600px"></div>

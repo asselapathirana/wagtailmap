@@ -1,4 +1,5 @@
 from django.db import models
+from wagtail.wagtailcore.fields import RichTextField
 
 from wagtail.wagtailcore.models import Page
 from wagtail.wagtailadmin.edit_handlers import FieldPanel
@@ -189,7 +190,7 @@ EventIndexPageGeo.content_panels = Page.content_panels + Locatable.panels
 
 
 class EventPageGeo(Page, Locatable):
-    text = models.CharField(max_length=255)
+    text =  RichTextField(blank=True)
 
     def get_context(self, request, *args, **kwargs):
         return {
@@ -207,5 +208,5 @@ class EventPageGeo(Page, Locatable):
 
 
 EventPageGeo.content_panels = Page.content_panels + [
-    FieldPanel('text')
+    FieldPanel('text', classname="full"),
 ] + Locatable.panels
