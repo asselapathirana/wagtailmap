@@ -1,8 +1,18 @@
+from  datetime import date
 from django.db import models
+from django.db.models import Q
 from wagtail.wagtailcore.fields import RichTextField
 
-from wagtail.wagtailcore.models import Page
-from wagtail.wagtailadmin.edit_handlers import FieldPanel
+from wagtail.wagtailcore.models import Page, Orderable
+from wagtail.wagtailadmin.edit_handlers import FieldPanel, MultiFieldPanel, \
+    InlinePanel, PageChooserPanel
+
+from wagtail.wagtailimages.edit_handlers import ImageChooserPanel
+from wagtail.wagtailimages.models import Image
+from wagtail.wagtaildocs.edit_handlers import DocumentChooserPanel
+from wagtail.wagtailsearch import index
+
+from modelcluster.fields import ParentalKey
 
 import geopy
 from geopy.distance import VincentyDistance
@@ -10,8 +20,17 @@ from geopy.distance import vincenty
 from geopy.geocoders import get_geocoder_for_service
 from geopy.exc import GeocoderUnavailable
 
+
+
+
 GEOCODING_SERVICE = 'google'
 GOOGLE_MAPS_KEY = 'AIzaSyA3GpN-eFyREu8PkuNSC1y9J2g8MXtLldk'
+
+EVENT_AUDIENCE_CHOICES = (
+    ('public', "Public"),
+    ('private', "Private"),
+)
+
 
 
 class Location(models.Model):
@@ -158,9 +177,87 @@ class DummyHomePage(Page):
 
 
 
-class EventIndexPageGeo(Page, Locatable):
-    
+# A couple of abstract classes that contain commonly used fields
 
+class LinkFields(models.Model):
+    link_external = models.URLField("External link", blank=True)
+    link_page = models.ForeignKey(
+        'wagtailcore.Page',
+        null=True,
+        blank=True,
+        related_name='+'
+    )
+    link_document = models.ForeignKey(
+        'wagtaildocs.Document',
+        null=True,
+        blank=True,
+        related_name='+'
+    )
+
+    @property
+    def link(self):
+        if self.link_page:
+            return self.link_page.url
+        elif self.link_document:
+            return self.link_document.url
+        else:
+            return self.link_external
+
+    panels = [
+        FieldPanel('link_external'),
+        PageChooserPanel('link_page'),
+        DocumentChooserPanel('link_document'),
+    ]
+
+    class Meta:
+        abstract = True
+
+
+
+# Related links
+
+class RelatedLink(LinkFields):
+    title = models.CharField(max_length=255, help_text="Link title")
+
+    panels = [
+        FieldPanel('title'),
+        MultiFieldPanel(LinkFields.panels, "Link"),
+    ]
+
+    class Meta:
+        abstract = True
+
+# Event index page
+
+class EventIndexPageRelatedLink(Orderable, RelatedLink):
+    page = ParentalKey('home.EventIndexPageGeo', related_name='related_links')
+
+
+class EventIndexPageRelatedLink(Orderable, RelatedLink):
+    page = ParentalKey('home.EventIndexPageGeo', related_name='related_links')
+
+
+
+class EventIndexPageGeo(Page, Locatable):
+    intro = RichTextField(blank=True)
+
+    search_fields = Page.search_fields + (
+        index.SearchField('intro',partial_match=True),
+    )
+
+    @property
+    def events(self):
+        # Get list of live event pages that are descendants of this page
+        events = EventPageGeo.objects.live().descendant_of(self)
+
+        # Filter events list to get ones that are either
+        # running now ohttps://search.yahoo.com/yhs/searchh?hspart=ddc&hsimp=yhs-linuxmint&type=__alt__ddc_linuxmint_com&p=filtering+a+pagequery+setr start in the future
+        events=events.filter(Q(date_from__gte=date.today()) | Q(date_to__gte=date.today()))
+        print(events)
+        # Order by date
+        events = events.order_by('date_from')
+        print (events)
+        return events
 
     def get_context(self, request, *args, **kwargs):
         q = request.GET.get('q', '')
@@ -189,11 +286,65 @@ class EventIndexPageGeo(Page, Locatable):
         super(EventIndexPageGeo, self).save(*args, **kwargs)
 
 
-EventIndexPageGeo.content_panels = Page.content_panels + Locatable.panels
+
+EventIndexPageGeo.content_panels = [ FieldPanel('title', classname="full title") ] + Locatable.panels \
+    + [ FieldPanel('intro', classname="full"),
+       InlinePanel(EventIndexPageGeo, 'related_links', label="Related links"), ]
+
+
+class EventPageGeoRelatedLink(Orderable, RelatedLink):
+    page = ParentalKey('home.EventPageGeo', related_name='related_links')
+
+
+class EventPageGeoSpeaker(Orderable, LinkFields):
+    page = ParentalKey('home.EventPageGeo', related_name='speakers')
+    first_name = models.CharField("Name", max_length=255, blank=True)
+    last_name = models.CharField("Surname", max_length=255, blank=True)
+    image = models.ForeignKey(
+        'wagtailimages.Image',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+'
+    )
+
+    @property
+    def name_display(self):
+        return self.first_name + " " + self.last_name
+
+    panels = [
+        FieldPanel('first_name'),
+        FieldPanel('last_name'),
+        ImageChooserPanel('image'),
+        MultiFieldPanel(LinkFields.panels, "Link"),
+    ]
+    
+    
+
 
 
 class EventPageGeo(Page, Locatable):
-    text =  RichTextField(blank=True)
+    date_from = models.DateField("Start date",default=date.today())
+    date_to = models.DateField(
+        "End date",
+        null=True,
+        blank=True,
+        help_text="Not required if event is on a single day"
+    )
+
+    time_from = models.TimeField("Start time", null=True, blank=True)
+    time_to = models.TimeField("End time", null=True, blank=True)
+    audience = models.CharField(max_length=255, choices=EVENT_AUDIENCE_CHOICES, default='public')
+    text = RichTextField(blank=True)
+    cost = models.CharField(max_length=255,default="Free")
+    signup_link = models.URLField(blank=True)
+    feed_image = models.ForeignKey(
+        'wagtailimages.Image',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+'
+    )
 
     def get_context(self, request, *args, **kwargs):
         return {
@@ -210,6 +361,22 @@ class EventPageGeo(Page, Locatable):
         super(EventPageGeo, self).save(*args, **kwargs)
 
 
-EventPageGeo.content_panels = Page.content_panels + [
+EventPageGeo.content_panels = [
+    FieldPanel('title', classname="full title"),
+] +Locatable.panels + [
+    FieldPanel('date_from'),
+    FieldPanel('date_to'),
+    FieldPanel('time_from'),
+    FieldPanel('time_to'),
+    FieldPanel('audience'),
+    FieldPanel('cost'),
+    FieldPanel('signup_link'),
+   # InlinePanel(EventPageGeo, 'carousel_items', label="Carousel items"),
     FieldPanel('text', classname="full"),
-] + Locatable.panels
+    InlinePanel(EventPageGeo, 'speakers', label="Speakers"),
+    InlinePanel(EventPageGeo, 'related_links', label="Related links"),
+]
+
+EventPageGeo.promote_panels = Page.promote_panels + [
+    ImageChooserPanel('feed_image'),
+]
