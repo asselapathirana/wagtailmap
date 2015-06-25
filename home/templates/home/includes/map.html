@@ -8,7 +8,7 @@
             pages.push([
                 {{ page.location.latitude }},
                 {{ page.location.longitude }},
-                "<a href='{{page.url}}'> {{page.title }}</a>",
+                "<h3><a href='{{page.url}}'> {{page.title }}</a></h3><br> : {{page.location_name}}",
                 ""
             ]);
           {% endfor %}
@@ -44,14 +44,21 @@
                return bounds;	
 
 	  }
+ 
+	  function strip(html)
+		{
+   			var tmp = document.createElement("DIV");
+   			tmp.innerHTML = html;
+   			return tmp.textContent || tmp.innerText || "";
+		}
 
           function addMarker(lat, long, title, text,icon) {
               var latLng = new google.maps.LatLng(lat, long);
               var marker = new google.maps.Marker({
                   position: latLng,
                   map: map,
-                  title: title,
-                  desc: "<h3>" + title + "</h3>" + text,
+                  title: strip(title),
+                  desc:  title,
 		  icon: icon
               });
               var infowindow = new google.maps.InfoWindow();
@@ -73,9 +80,12 @@
               map = new google.maps.Map(document.getElementById('map-canvas'),
                                         mapOptions);
               map.fitBounds (bounds);
-
-
-	
+              // now do not allow excessive zoom
+	      // from http://stackoverflow.com/questions/2437683/google-maps-api-v3-can-i-setzoom-after-fitbounds
+              var listener = google.maps.event.addListener(map, "idle", function() { 
+  			if (map.getZoom() > 16) map.setZoom(16); 
+  				google.maps.event.removeListener(listener); 
+			});	
               pages.forEach(function(page) {
                   addMarker.apply(undefined, page);
               });
