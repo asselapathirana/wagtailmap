@@ -30,6 +30,9 @@ class Location(models.Model):
                             blank=True)
     latitude = models.FloatField()
     longitude = models.FloatField()
+ 
+    def __str__(self):
+        return self.name
 
     def translate_point(self, bearing):
         origin = geopy.Point(self.latitude, self.longitude)
