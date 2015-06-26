@@ -233,11 +233,6 @@ class EventIndexPageRelatedLink(Orderable, RelatedLink):
     page = ParentalKey('home.EventIndexPageGeo', related_name='related_links')
 
 
-class EventIndexPageRelatedLink(Orderable, RelatedLink):
-    page = ParentalKey('home.EventIndexPageGeo', related_name='related_links')
-
-
-
 class EventIndexPageGeo(Page, Locatable):
     intro = RichTextField(blank=True)
 
